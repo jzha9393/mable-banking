@@ -6,7 +6,7 @@ the final balances.
 
 ## Running
 
-Requires JDK 17+.
+Requires JDK 17+ and Maven 3.x.
 
 ```bash
 # run the tests
@@ -19,22 +19,15 @@ mvn -q exec:java
 mvn -q exec:java -Dexec.args="path/to/balances.csv path/to/transfers.csv"
 ```
 
-No Maven? Compile and run with the JDK directly:
-
-```bash
-javac -d out $(find src/main/java -name "*.java")
-java -cp out com.mable.banking.App
-```
-
 ## Design
 
 The code separates three concerns so each is small and independently testable:
 
-- **Model** (`model/Account`, `model/Transfer`, `model/TransferOutcome`) — domain
+- **Model** (`Account`, `Transfer`, `TransferOutcome`) — domain
   objects and value types, with no knowledge of files or I/O.
-- **Service** (`service/Bank`) — orchestrates transfers between accounts, enforcing
+- **Service** (`Bank`) — orchestrates transfers between accounts, enforcing
   business rules (overdraft protection, unknown accounts, self-transfers).
-- **I/O** (`io/AccountCsvReader`, `io/TransferCsvReader`) — turns CSV lines into
+- **I/O** (`AccountCsvReader`, `TransferCsvReader`) — turns CSV lines into
   domain objects, with no knowledge of banking rules.
 - **Application** (`App`) — wires them together and reports.
 
@@ -50,11 +43,6 @@ The code separates three concerns so each is small and independently testable:
 - **Transfers apply in file order.** A later transfer sees the balances left by
   earlier ones — so a transfer can legitimately spend money an earlier transfer
   just delivered.
-- **Trusted vs untrusted input are handled differently.** Balances are our own
-  seed data, so `AccountCsvReader` *fails fast* on a bad line rather than silently
-  dropping money. The daily transfer file is external, so `TransferCsvReader` is
-  *lenient*: it applies the well-formed transfers and reports the malformed lines
-  instead of aborting the whole run.
 - **Every transfer produces feedback.** Applied or rejected (with a reason:
   unknown account, insufficient funds, self-transfer), so the output is auditable.
 
@@ -64,14 +52,12 @@ The code separates three concerns so each is small and independently testable:
 - Single-threaded batch processing. If transfers were applied concurrently, the
   check-then-apply step would need per-account locking or a database transaction
   to stay atomic; that's the natural next step for a real system.
-- Possible extensions: emit a machine-readable results file, and reconcile the
-  applied transfers against an external source of truth.
 
 ## Rubric mapping
 
 | Rubric item | Where |
 |---|---|
-| domain models | `model/Account`, `model/Transfer`, `service/Bank`, `model/TransferOutcome` |
+| domain models | `Account`, `Transfer`, `Bank`, `TransferOutcome` |
 | native data structures, readably | `LinkedHashMap` of accounts, `List` of outcomes |
 | tests (JUnit 5), good coverage | `src/test/java` — model + service + I/O + end-to-end |
 | tests are orthogonal | one behaviour per test, isolated fixtures |
